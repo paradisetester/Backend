@@ -26,19 +26,20 @@ const frientlistRoutes = require('./routes/friendlistRoutes'); // Include friend
 
 const app = express();
 const server = http.createServer(app); // Use HTTP server to integrate with Socket.IO
+const allowedOrigin = 'https://dashboard-gamma-orpin.vercel.app';
+app.use(cors({
+  origin: allowedOrigin,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 const io = new Server(server, {
   cors: {
-    origin: 'https://dashboard-gamma-orpin.vercel.app/', // Frontend URL
+    origin: allowedOrigin,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
   },
 });
 
-// 🌐 Middleware for CORS
-app.use(cors({
-  origin: 'https://dashboard-gamma-orpin.vercel.app/', // Frontend URL
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
 
 // 📦 Middleware for JSON Parsing
 app.use(express.json());

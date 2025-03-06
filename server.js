@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -78,18 +79,19 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/employee_da
 io.on('connection', (socket) => {
   console.log('🔌 New client connected:', socket.id);
 
-  // Allow users to join their personal room for direct messages
+  // Allow users to join their personal room for direct messages.
   socket.on('joinUserRoom', (userId) => {
     if (userId) {
       socket.join(userId);
     }
   });
 
-  // Allow joining a chatroom
+  // Allow joining a chatroom for group messages.
   socket.on('joinRoom', (roomId) => {
     socket.join(roomId);
   });
 
+  // Handle sending messages.
   socket.on('sendMessage', async (data) => {
     try {
       if (!data.content || !data.sender) {
@@ -102,7 +104,8 @@ io.on('connection', (socket) => {
         timestamp: data.timestamp || Date.now(),
       };
 
-      // Determine if this is a group message or direct message
+      // Determine message type:
+      // If 'room' exists, treat as group chat; if 'reciever' exists, treat as direct message.
       if (data.room) {
         messageData.room = data.room;
       } else if (data.reciever) {
@@ -112,16 +115,15 @@ io.on('connection', (socket) => {
       }
 
       const message = await Message.create(messageData);
-
       const populatedMessage = await Message.findById(message._id)
         .populate('sender', 'name id')
         .populate('reciever', 'name id');
 
-      // Emit message based on type
+      // Emit message based on type.
       if (data.room) {
         io.to(data.room).emit('newMessage', populatedMessage);
       } else if (data.reciever) {
-        // For direct messages, emit to both the reciever’s room and back to the sender
+        // For direct messages, send to reciever’s personal room and back to the sender.
         io.to(data.reciever).emit('newMessage', populatedMessage);
         socket.emit('newMessage', populatedMessage);
       }

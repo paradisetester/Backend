@@ -1,10 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors'); // Import CORS middleware
-const path = require('path'); // For serving static files
-const http = require('http'); // For setting up Socket.IO
-const { Server } = require('socket.io'); // Import Socket.IO
-const Message = require('./models/Message'); // Adjust the path to your model
+const cors = require('cors');
+const path = require('path');
+const http = require('http');
+const { Server } = require('socket.io');
+const Message = require('./models/Message');
 
 require('dotenv').config();
 
@@ -14,19 +14,20 @@ const leaveRoutes = require('./routes/leaveRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const commentRoutes = require('./routes/commentRoutes');
-const chatRoutes = require('./routes/chatRoutes'); // Chat routes
-const messageRoutes = require('./routes/messageRoutes'); // Message routes
-const categoryRoutes = require('./routes/categoryRoutes'); // Include category routes
-const testRoutes = require('./routes/testRoutes'); // Include upload routes
-const friendrequestRoutes = require('./routes/friendrequestRoutes'); // Include friend request routes
-const aboutuseRoutes=require('./routes/PageRoutes/aboutusRoutes'); // Include about us routes
-const homeRoutes = require('./routes/PageRoutes/homeRoutes'); // Include home page routes
-const footerRoutes = require('./routes/PageRoutes/footerRoutes'); // Include footer routes
-const frientlistRoutes = require('./routes/friendlistRoutes'); // Include friend list routes
+const chatRoutes = require('./routes/chatRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const testRoutes = require('./routes/testRoutes');
+const friendrequestRoutes = require('./routes/friendrequestRoutes');
+const aboutuseRoutes = require('./routes/PageRoutes/aboutusRoutes');
+const homeRoutes = require('./routes/PageRoutes/homeRoutes');
+const footerRoutes = require('./routes/PageRoutes/footerRoutes');
+const frientlistRoutes = require('./routes/friendlistRoutes');
 
 const app = express();
-const server = http.createServer(app); // Use HTTP server to integrate with Socket.IO
+const server = http.createServer(app);
 const allowedOrigin = 'https://dashboard-gamma-orpin.vercel.app';
+
 app.use(cors({
   origin: allowedOrigin,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -40,60 +41,85 @@ const io = new Server(server, {
   },
 });
 
-
-// 📦 Middleware for JSON Parsing
+// Middleware for JSON Parsing
 app.use(express.json());
 
-// 📂 Serve the uploads folder as static (directly from the project root)
+// Serve the uploads folder as static
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// 🛠️ Routes
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/project', projectRoutes);
 app.use('/api/task', taskRoutes);
 app.use('/api/comments', commentRoutes);
-app.use('/api/chat', chatRoutes); // Chat routes
-app.use('/api/messages', messageRoutes); // Message routes
-app.use('/api/categories', categoryRoutes); // Include category routes
-// app.use('/api/uploads', uploadRoutes); // Add upload routes
-app.use('/api/test', testRoutes); // Add test routes
-app.use('/api/friendrequests', friendrequestRoutes); // Include friend request routes
-app.use('/api/friendlist', frientlistRoutes); // Include friend request routes
-app.use('/api/aboutus', aboutuseRoutes); // Include about us routes
-app.use('/api/home', homeRoutes); // Include home page routes
-app.use('/api/footer', footerRoutes); // Include footer routes
+app.use('/api/chat', chatRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/test', testRoutes);
+app.use('/api/friendrequests', friendrequestRoutes);
+app.use('/api/friendlist', frientlistRoutes);
+app.use('/api/aboutus', aboutuseRoutes);
+app.use('/api/home', homeRoutes);
+app.use('/api/footer', footerRoutes);
 
-// 🗄️ MongoDB Connection
+// MongoDB Connection
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/employee_dashboard')
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// ⚡ Socket.IO Setup
+// Socket.IO Setup
 io.on('connection', (socket) => {
   console.log('🔌 New client connected:', socket.id);
 
+  // Allow users to join their personal room for direct messages
+  socket.on('joinUserRoom', (userId) => {
+    if (userId) {
+      socket.join(userId);
+    }
+  });
+
+  // Allow joining a chatroom
   socket.on('joinRoom', (roomId) => {
     socket.join(roomId);
   });
 
   socket.on('sendMessage', async (data) => {
     try {
-      if (!data.content || !data.sender || !data.room) {
-        return socket.emit('errorMessage', 'Invalid message data');
+      if (!data.content || !data.sender) {
+        return socket.emit('errorMessage', 'Invalid message data: content and sender are required');
       }
-      const message = await Message.create({
+
+      let messageData = {
         content: data.content,
-        sender: data.sender.id, // Save only the sender ID
-        room: data.room,
+        sender: data.sender.id || data.sender,
         timestamp: data.timestamp || Date.now(),
-      });
-      
-      // Fetch sender details
-      const populatedMessage = await Message.findById(message._id).populate('sender', 'name id');
-      
-      io.to(data.room).emit('newMessage', populatedMessage);
+      };
+
+      // Determine if this is a group message or direct message
+      if (data.room) {
+        messageData.room = data.room;
+      } else if (data.reciever) {
+        messageData.reciever = data.reciever;
+      } else {
+        return socket.emit('errorMessage', 'Either room or reciever must be provided');
+      }
+
+      const message = await Message.create(messageData);
+
+      const populatedMessage = await Message.findById(message._id)
+        .populate('sender', 'name id')
+        .populate('reciever', 'name id');
+
+      // Emit message based on type
+      if (data.room) {
+        io.to(data.room).emit('newMessage', populatedMessage);
+      } else if (data.reciever) {
+        // For direct messages, emit to both the reciever’s room and back to the sender
+        io.to(data.reciever).emit('newMessage', populatedMessage);
+        socket.emit('newMessage', populatedMessage);
+      }
     } catch (error) {
       console.error('Error saving message:', error);
       socket.emit('errorMessage', 'Could not send message');
@@ -105,14 +131,13 @@ io.on('connection', (socket) => {
   });
 });
 
-
-// ⚠️ Error Handling Middleware
+// Error Handling Middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// 🚀 Start the Server
+// Start the Server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🌟 Server running on http://localhost:${PORT}`);

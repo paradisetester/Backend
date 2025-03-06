@@ -26,17 +26,22 @@ const frientlistRoutes = require('./routes/friendlistRoutes');
 
 const app = express();
 const server = http.createServer(app);
-const allowedOrigin = 'https://dashboard-gamma-orpin.vercel.app';
+
+// Allow both production and local development origins
+const allowedOrigins = [
+  'https://dashboard-gamma-orpin.vercel.app',
+  'http://localhost:3000'
+];
 
 app.use(cors({
-  origin: allowedOrigin,
+  origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigin,
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
   },
 });

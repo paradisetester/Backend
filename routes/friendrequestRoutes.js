@@ -14,7 +14,7 @@ router.post('/send', async (req, res) => {
         }
 
         // Check if a request already exists
-        const existingRequest = await FriendRequest.findOne({ to, from });
+        const existingRequest = await FriendRequest.findOne({ to, from }, { status: 'Pending' });
         if (existingRequest) {
             return res.status(400).json({ message: 'Friend request already sent' });
         }

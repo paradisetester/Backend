@@ -8,13 +8,17 @@ const router = express.Router();
 router.post('/send', async (req, res) => {
     try {
         const { to, from } = req.body;
-        
+
         if (!to || !from) {
             return res.status(400).json({ message: 'Both "to" and "from" are required' });
         }
 
         // Check if a request already exists
-        const existingRequest = await FriendRequest.findOne({ to, from }) && await FriendRequest.findOne({ status: 'Pending' || 'Accepted' });
+        const existingRequest = await FriendRequest.findOne({
+            to,
+            from,
+            status: { $in: ['Pending', 'Accepted'] }
+        });
         if (existingRequest) {
             return res.status(400).json({ message: 'Friend request already sent' });
         }
@@ -49,7 +53,7 @@ router.put('/accept/:id', async (req, res) => {
 });
 
 // Reject a Friend Request
-router.put('/reject/:id', authenticate ,async (req, res) => {
+router.put('/reject/:id', authenticate, async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -72,7 +76,7 @@ router.put('/reject/:id', authenticate ,async (req, res) => {
 router.get('/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const requests = await FriendRequest.find({ 
+        const requests = await FriendRequest.find({
             to: userId,
             // status: { $nin: ['Accepted', 'Rejected'] } // Exclude accepted and rejected requests
         }).populate('from', 'name email'); // Populate sender details
@@ -86,7 +90,7 @@ router.get('/:userId', async (req, res) => {
 router.get('/sent/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const requests = await FriendRequest.find({ 
+        const requests = await FriendRequest.find({
             from: userId,  // Change filter to "from" instead of "to"
             status: { $nin: ['Accepted', 'Rejected'] }
         });
@@ -98,14 +102,14 @@ router.get('/sent/:userId', async (req, res) => {
 // Get ALL Friend Requests Sent by the User (including Pending, Accepted, and Rejected)
 router.get('/sent/all/:userId', async (req, res) => {
     try {
-      const { userId } = req.params;
-      const requests = await FriendRequest.find({ from: userId });
-      res.json({ message: 'Sent friend requests retrieved', requests });
+        const { userId } = req.params;
+        const requests = await FriendRequest.find({ from: userId });
+        res.json({ message: 'Sent friend requests retrieved', requests });
     } catch (error) {
-      res.status(500).json({ message: 'Error fetching sent friend requests', error: error.message });
+        res.status(500).json({ message: 'Error fetching sent friend requests', error: error.message });
     }
-  });
-  
+});
+
 // Delete a Friend Request
 router.delete('/:id', async (req, res) => {
     try {

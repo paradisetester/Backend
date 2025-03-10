@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const FriendRequest = require('../models/FriendRequests'); // Adjust path as needed
-
+const authenticate = require('../middleware/authenticate');
 const router = express.Router();
 
 // Send a Friend Request
@@ -49,7 +49,7 @@ router.put('/accept/:id', async (req, res) => {
 });
 
 // Reject a Friend Request
-router.put('/reject/:id', async (req, res) => {
+router.put('/reject/:id', authenticate ,async (req, res) => {
     try {
         const { id } = req.params;
 

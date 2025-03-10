@@ -95,7 +95,17 @@ router.get('/sent/:userId', async (req, res) => {
         res.status(500).json({ message: 'Error fetching sent friend requests', error: error.message });
     }
 });
-
+// Get ALL Friend Requests Sent by the User (including Pending, Accepted, and Rejected)
+router.get('/sent/all/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const requests = await FriendRequest.find({ from: userId });
+      res.json({ message: 'Sent friend requests retrieved', requests });
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching sent friend requests', error: error.message });
+    }
+  });
+  
 // Delete a Friend Request
 router.delete('/:id', async (req, res) => {
     try {

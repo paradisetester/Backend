@@ -74,7 +74,7 @@ router.get('/:userId', async (req, res) => {
         const { userId } = req.params;
         const requests = await FriendRequest.find({ 
             to: userId,
-            status: { $nin: ['Accepted', 'Rejected'] } // Exclude accepted and rejected requests
+            // status: { $nin: ['Accepted', 'Rejected'] } // Exclude accepted and rejected requests
         }).populate('from', 'name email'); // Populate sender details
 
         res.json({ message: 'Friend requests retrieved', requests });

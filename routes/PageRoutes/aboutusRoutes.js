@@ -1,41 +1,26 @@
 const express = require('express');
 const multer = require('multer'); // File upload middleware
 const path = require('path');
-const fs = require('fs');
 const About = require('../../models/Pages/AboutUs');
 const authenticate = require('../../middleware/authenticate');
+const { uploadToCloudinary } = require('../../utils/cloudinaryUpload'); // adjust the path as needed
 
 const router = express.Router();
 
-/* ------------------------------------------
- ✅ Multer Configuration for File Uploads
------------------------------------------- */
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
-});
-
-const upload = multer({ 
-  storage, 
+// Use Multer memory storage to work with file buffers
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-
     if (extname && mimetype) {
       return cb(null, true);
     } else {
       cb(new Error('Only images (jpeg, jpg, png, gif) are allowed.'));
     }
-  }
+  },
 });
 
 /* ------------------------------------------
@@ -70,54 +55,48 @@ router.post(
     }
 
     try {
-      // Process the main image using optional chaining
-      const mainImage = req.files?.mainImage
-        ? `/uploads/${req.files.mainImage[0].filename}`
-        : null;
+      // Upload main image to Cloudinary (e.g., in "EmployeeDashboard/AboutUs/Main")
+      let mainImage = null;
+      if (req.files?.mainImage) {
+        mainImage = await uploadToCloudinary(req.files.mainImage[0].buffer, "EmployeeDashboard/AboutUs/Main");
+      }
 
-      // Parse JSON fields (they might be sent as strings)
+      // Parse JSON fields
       const parsedCoreValues = typeof coreValues === 'string' ? JSON.parse(coreValues) : coreValues;
-      const parsedTestimonials =
-        typeof testimonials === 'string' ? JSON.parse(testimonials) : testimonials || [];
-      const parsedExperiences =
-        typeof experiences === 'string' ? JSON.parse(experiences) : experiences || [];
+      const parsedTestimonials = typeof testimonials === 'string' ? JSON.parse(testimonials) : testimonials || [];
+      const parsedExperiences = typeof experiences === 'string' ? JSON.parse(experiences) : experiences || [];
       const parsedTeam = typeof team === 'string' ? JSON.parse(team) : team || [];
-      const parsedMilestones =
-        typeof milestones === 'string' ? JSON.parse(milestones) : milestones || [];
-      const parsedSocialMedia =
-        typeof socialMedia === 'string' ? JSON.parse(socialMedia) : socialMedia || [];
+      const parsedMilestones = typeof milestones === 'string' ? JSON.parse(milestones) : milestones || [];
+      const parsedSocialMedia = typeof socialMedia === 'string' ? JSON.parse(socialMedia) : socialMedia || [];
 
-      // Map uploaded nested images to their corresponding entries (if they exist)
+      // For nested images, upload each file to Cloudinary and update the corresponding object
       if (req.files?.testimonialImages) {
-        req.files.testimonialImages.forEach((file, index) => {
-          if (parsedTestimonials[index]) {
-            parsedTestimonials[index].image = `/uploads/${file.filename}`;
+        for (let i = 0; i < req.files.testimonialImages.length; i++) {
+          if (parsedTestimonials[i]) {
+            parsedTestimonials[i].image = await uploadToCloudinary(req.files.testimonialImages[i].buffer, "EmployeeDashboard/AboutUs/Testimonial");
           }
-        });
+        }
       }
-
       if (req.files?.experienceImages) {
-        req.files.experienceImages.forEach((file, index) => {
-          if (parsedExperiences[index]) {
-            parsedExperiences[index].image = `/uploads/${file.filename}`;
+        for (let i = 0; i < req.files.experienceImages.length; i++) {
+          if (parsedExperiences[i]) {
+            parsedExperiences[i].image = await uploadToCloudinary(req.files.experienceImages[i].buffer, "EmployeeDashboard/AboutUs/Experience");
           }
-        });
+        }
       }
-
       if (req.files?.teamImages) {
-        req.files.teamImages.forEach((file, index) => {
-          if (parsedTeam[index]) {
-            parsedTeam[index].image = `/uploads/${file.filename}`;
+        for (let i = 0; i < req.files.teamImages.length; i++) {
+          if (parsedTeam[i]) {
+            parsedTeam[i].image = await uploadToCloudinary(req.files.teamImages[i].buffer, "EmployeeDashboard/AboutUs/Team");
           }
-        });
+        }
       }
-
       if (req.files?.milestoneImages) {
-        req.files.milestoneImages.forEach((file, index) => {
-          if (parsedMilestones[index]) {
-            parsedMilestones[index].image = `/uploads/${file.filename}`;
+        for (let i = 0; i < req.files.milestoneImages.length; i++) {
+          if (parsedMilestones[i]) {
+            parsedMilestones[i].image = await uploadToCloudinary(req.files.milestoneImages[i].buffer, "EmployeeDashboard/AboutUs/Milestones");
           }
-        });
+        }
       }
 
       const newAbout = new About({
@@ -143,15 +122,11 @@ router.post(
   }
 );
 
-
-
-
 /* ------------------------------------------
  ✅ Route: Fetch About Us Content
 ------------------------------------------ */
 router.get('/get-aboutus', async (req, res) => {
   try {
-    // Assuming only one About Us document exists; otherwise, you can use .find() to return an array.
     const about = await About.findOne();
     if (!about) {
       return res.status(404).json({ error: 'About Us content not found.' });
@@ -168,12 +143,9 @@ router.get('/get-aboutus', async (req, res) => {
 ------------------------------------------ */
 router.get('/get-aboutus/:id', async (req, res) => {
   const { id } = req.params;
-  
-  // Validate ID format
   if (!id.match(/^[0-9a-fA-F]{24}$/)) {
     return res.status(400).json({ error: 'Invalid About Us ID format.' });
   }
-  
   try {
     const about = await About.findById(id);
     if (!about) {
@@ -189,7 +161,6 @@ router.get('/get-aboutus/:id', async (req, res) => {
 /* ------------------------------------------
  ✅ Route: Update About Us Content
 ------------------------------------------ */
-// Update About Us Content Route
 router.put(
   '/update-aboutus/:id',
   upload.fields([
@@ -212,83 +183,60 @@ router.put(
       milestones,
       socialMedia,
     } = req.body;
-    
     try {
       const about = await About.findById(req.params.id);
       if (!about) {
         return res.status(404).json({ error: 'About Us content not found.' });
       }
-      
+
       // Update basic fields
       about.companyName = companyName || about.companyName;
       about.description = description || about.description;
       about.mission = mission || about.mission;
       about.vision = vision || about.vision;
-      about.coreValues = coreValues
-        ? (typeof coreValues === 'string' ? JSON.parse(coreValues) : coreValues)
-        : about.coreValues;
-      about.testimonials = testimonials
-        ? (typeof testimonials === 'string' ? JSON.parse(testimonials) : testimonials)
-        : about.testimonials;
-      about.experiences = experiences
-        ? (typeof experiences === 'string' ? JSON.parse(experiences) : experiences)
-        : about.experiences;
-      about.team = team
-        ? (typeof team === 'string' ? JSON.parse(team) : team)
-        : about.team;
-      about.milestones = milestones
-        ? (typeof milestones === 'string' ? JSON.parse(milestones) : milestones)
-        : about.milestones;
-      about.socialMedia = socialMedia
-        ? (typeof socialMedia === 'string' ? JSON.parse(socialMedia) : socialMedia)
-        : about.socialMedia;
-      
-      // If a new main image is provided, remove the old one and update
+      about.coreValues = coreValues ? (typeof coreValues === 'string' ? JSON.parse(coreValues) : coreValues) : about.coreValues;
+      about.testimonials = testimonials ? (typeof testimonials === 'string' ? JSON.parse(testimonials) : testimonials) : about.testimonials;
+      about.experiences = experiences ? (typeof experiences === 'string' ? JSON.parse(experiences) : experiences) : about.experiences;
+      about.team = team ? (typeof team === 'string' ? JSON.parse(team) : team) : about.team;
+      about.milestones = milestones ? (typeof milestones === 'string' ? JSON.parse(milestones) : milestones) : about.milestones;
+      about.socialMedia = socialMedia ? (typeof socialMedia === 'string' ? JSON.parse(socialMedia) : socialMedia) : about.socialMedia;
+
+      // Update main image if provided
       if (req.files?.mainImage) {
-        if (about.mainImage) {
-          const oldImagePath = path.join(__dirname, '..', about.mainImage);
-          fs.unlink(oldImagePath, (err) => {
-            if (err) console.error('Failed to delete old main image:', err);
-          });
-        }
-        about.mainImage = `/uploads/${req.files.mainImage[0].filename}`;
+        about.mainImage = await uploadToCloudinary(req.files.mainImage[0].buffer, "EmployeeDashboard/AboutUs/Main");
       }
-      
-      // For nested file fields, update images if new files are provided
+
+      // Update nested image fields similarly
       if (req.files?.testimonialImages) {
-        req.files.testimonialImages.forEach((file, index) => {
-          if (about.testimonials[index]) {
-            about.testimonials[index].image = `/uploads/${file.filename}`;
+        for (let i = 0; i < req.files.testimonialImages.length; i++) {
+          if (about.testimonials[i]) {
+            about.testimonials[i].image = await uploadToCloudinary(req.files.testimonialImages[i].buffer, "EmployeeDashboard/AboutUs/Testimonial");
           }
-        });
+        }
       }
-      
       if (req.files?.experienceImages) {
-        req.files.experienceImages.forEach((file, index) => {
-          if (about.experiences[index]) {
-            about.experiences[index].image = `/uploads/${file.filename}`;
+        for (let i = 0; i < req.files.experienceImages.length; i++) {
+          if (about.experiences[i]) {
+            about.experiences[i].image = await uploadToCloudinary(req.files.experienceImages[i].buffer, "EmployeeDashboard/AboutUs/Experience");
           }
-        });
+        }
       }
-      
       if (req.files?.teamImages) {
-        req.files.teamImages.forEach((file, index) => {
-          if (about.team[index]) {
-            about.team[index].image = `/uploads/${file.filename}`;
+        for (let i = 0; i < req.files.teamImages.length; i++) {
+          if (about.team[i]) {
+            about.team[i].image = await uploadToCloudinary(req.files.teamImages[i].buffer, "EmployeeDashboard/AboutUs/Team");
           }
-        });
+        }
       }
-      
       if (req.files?.milestoneImages) {
-        req.files.milestoneImages.forEach((file, index) => {
-          if (about.milestones[index]) {
-            about.milestones[index].image = `/uploads/${file.filename}`;
+        for (let i = 0; i < req.files.milestoneImages.length; i++) {
+          if (about.milestones[i]) {
+            about.milestones[i].image = await uploadToCloudinary(req.files.milestoneImages[i].buffer, "EmployeeDashboard/AboutUs/Milestones");
           }
-        });
+        }
       }
-      
+
       about.updatedAt = Date.now();
-      
       await about.save();
       res.status(200).json({ message: 'About Us content updated successfully!', about });
     } catch (err) {
@@ -297,7 +245,6 @@ router.put(
     }
   }
 );
-
 
 /* ------------------------------------------
  ✅ Route: Delete About Us Content
@@ -308,15 +255,7 @@ router.delete('/delete-aboutus/:id', authenticate, async (req, res) => {
     if (!about) {
       return res.status(404).json({ error: 'About Us content not found.' });
     }
-    
-    // Remove main image if it exists
-    if (about.mainImage) {
-      const imagePath = path.join(__dirname, '..', about.mainImage);
-      fs.unlink(imagePath, (err) => {
-        if (err) console.error('Failed to delete main image:', err);
-      });
-    }
-    
+    // Note: Since files are stored in Cloudinary, you may optionally use Cloudinary's destroy method here.
     await about.deleteOne();
     res.status(200).json({ message: 'About Us content deleted successfully!' });
   } catch (err) {
@@ -325,7 +264,4 @@ router.delete('/delete-aboutus/:id', authenticate, async (req, res) => {
   }
 });
 
-/* ------------------------------------------
- ✅ Export Router
------------------------------------------- */
 module.exports = router;

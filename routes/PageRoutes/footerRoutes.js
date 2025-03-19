@@ -1,27 +1,14 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
-const Footer = require('../../models/Pages/Footer'); // Updated Footer model path
+const Footer = require('../../models/Pages/Footer');
 const authenticate = require('../../middleware/authenticate');
+const { uploadToCloudinary } = require('../../utils/cloudinaryUpload');
 
 const router = express.Router();
 
-/* ------------------------------------------
- ✅ Multer Configuration for File Uploads (mainImage)
------------------------------------------- */
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
-});
+// Use memory storage for file uploads
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 /* ------------------------------------------
@@ -36,7 +23,8 @@ router.post('/add-footer', authenticate, upload.single('mainImage'), async (req,
     if (!req.file) {
       return res.status(400).json({ error: 'Footer mainImage is required.' });
     }
-    const mainImage = `/uploads/${req.file.filename}`;
+    // Upload mainImage to Cloudinary (e.g., "EmployeeDashboard/Footer/Main")
+    const mainImage = await uploadToCloudinary(req.file.buffer, "EmployeeDashboard/Footer/Main");
 
     // Parse nested fields if provided as JSON strings
     const parsedQuickLinks = typeof quickLinks === 'string' ? JSON.parse(quickLinks) : quickLinks || [];
@@ -68,7 +56,6 @@ router.post('/add-footer', authenticate, upload.single('mainImage'), async (req,
 ------------------------------------------ */
 router.get('/get-footer', async (req, res) => {
   try {
-    // Assuming only one Footer document exists; otherwise, use .find() to return an array.
     const footer = await Footer.findOne();
     if (!footer) {
       return res.status(404).json({ error: 'Footer content not found.' });
@@ -112,8 +99,7 @@ router.put('/update-footer/:id', upload.single('mainImage'), async (req, res) =>
     }
     // Update mainImage if a new file is provided
     if (req.file) {
-      // Optionally, delete the old image file here
-      footer.mainImage = `/uploads/${req.file.filename}`;
+      footer.mainImage = await uploadToCloudinary(req.file.buffer, "EmployeeDashboard/Footer/Main");
     }
     footer.text = text || footer.text;
     if (quickLinks) {

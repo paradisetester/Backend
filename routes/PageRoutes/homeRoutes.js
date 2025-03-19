@@ -1,30 +1,16 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const HomePage = require('../../models/Pages/Home'); // Adjust the path as needed
 const authenticate = require('../../middleware/authenticate');
+const { uploadToCloudinary } = require('../../utils/cloudinaryUpload');
 
 const router = express.Router();
 
-/* ------------------------------------------
- ✅ Multer Configuration for File Uploads
------------------------------------------- */
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  }
-});
-
-const upload = multer({ 
-  storage, 
+// Use memory storage
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -34,7 +20,7 @@ const upload = multer({
     } else {
       cb(new Error('Only images (jpeg, jpg, png, gif) are allowed.'));
     }
-  }
+  },
 });
 
 /* ------------------------------------------
@@ -46,7 +32,7 @@ router.post(
   upload.fields([
     { name: 'heroBackground', maxCount: 1 },
     { name: 'aboutImage', maxCount: 1 },
-    { name: 'portfolioImages' }
+    { name: 'portfolioImages' },
   ]),
   async (req, res) => {
     const {
@@ -62,28 +48,28 @@ router.post(
       contactHeading,
       contactSubText,
       contactButtonText,
-      contactButtonLink
+      contactButtonLink,
     } = req.body;
 
     try {
-      // Process hero background image
-      const heroBackground = req.files?.heroBackground 
-        ? `/uploads/${req.files.heroBackground[0].filename}` 
+      // Upload hero background image to Cloudinary (e.g., "EmployeeDashboard/Home/Hero")
+      const heroBackground = req.files?.heroBackground
+        ? await uploadToCloudinary(req.files.heroBackground[0].buffer, "EmployeeDashboard/Home/Hero")
         : null;
       
-      // Process about section image
-      const aboutImage = req.files?.aboutImage 
-        ? `/uploads/${req.files.aboutImage[0].filename}` 
+      // Upload about section image to Cloudinary (e.g., "EmployeeDashboard/Home/About")
+      const aboutImage = req.files?.aboutImage
+        ? await uploadToCloudinary(req.files.aboutImage[0].buffer, "EmployeeDashboard/Home/About")
         : null;
       
       // Process portfolio images and parse portfolio data
       let parsedPortfolio = typeof portfolio === 'string' ? JSON.parse(portfolio) : portfolio || [];
       if (req.files?.portfolioImages) {
-        req.files.portfolioImages.forEach((file, index) => {
-          if (parsedPortfolio[index]) {
-            parsedPortfolio[index].image = `/uploads/${file.filename}`;
+        for (let i = 0; i < req.files.portfolioImages.length; i++) {
+          if (parsedPortfolio[i]) {
+            parsedPortfolio[i].image = await uploadToCloudinary(req.files.portfolioImages[i].buffer, "EmployeeDashboard/Home/Portfolio");
           }
-        });
+        }
       }
       
       // Parse services if sent as string
@@ -95,13 +81,13 @@ router.post(
           heading: heroHeading,
           tagline: heroTagline,
           buttonText: heroButtonText,
-          buttonLink: heroButtonLink
+          buttonLink: heroButtonLink,
         },
         about: {
           image: aboutImage,
           title: aboutTitle,
           description: aboutDescription,
-          readMoreLink: aboutReadMoreLink
+          readMoreLink: aboutReadMoreLink,
         },
         services: parsedServices,
         portfolio: parsedPortfolio,
@@ -109,8 +95,8 @@ router.post(
           heading: contactHeading,
           subText: contactSubText,
           buttonText: contactButtonText,
-          buttonLink: contactButtonLink
-        }
+          buttonLink: contactButtonLink,
+        },
       });
 
       await newHome.save();
@@ -166,7 +152,7 @@ router.put(
   upload.fields([
     { name: 'heroBackground', maxCount: 1 },
     { name: 'aboutImage', maxCount: 1 },
-    { name: 'portfolioImages' }
+    { name: 'portfolioImages' },
   ]),
   async (req, res) => {
     const {
@@ -182,7 +168,7 @@ router.put(
       contactHeading,
       contactSubText,
       contactButtonText,
-      contactButtonLink
+      contactButtonLink,
     } = req.body;
     try {
       const home = await HomePage.findById(req.params.id);
@@ -196,11 +182,7 @@ router.put(
       home.hero.buttonText = heroButtonText || home.hero.buttonText;
       home.hero.buttonLink = heroButtonLink || home.hero.buttonLink;
       if (req.files?.heroBackground) {
-        if (home.hero.backgroundImage) {
-          const oldPath = path.join(__dirname, '..', home.hero.backgroundImage);
-          fs.unlink(oldPath, err => { if (err) console.error('Failed to delete old hero background:', err); });
-        }
-        home.hero.backgroundImage = `/uploads/${req.files.heroBackground[0].filename}`;
+        home.hero.backgroundImage = await uploadToCloudinary(req.files.heroBackground[0].buffer, "EmployeeDashboard/Home/Hero");
       }
 
       // Update about section
@@ -208,11 +190,7 @@ router.put(
       home.about.description = aboutDescription || home.about.description;
       home.about.readMoreLink = aboutReadMoreLink || home.about.readMoreLink;
       if (req.files?.aboutImage) {
-        if (home.about.image) {
-          const oldPath = path.join(__dirname, '..', home.about.image);
-          fs.unlink(oldPath, err => { if (err) console.error('Failed to delete old about image:', err); });
-        }
-        home.about.image = `/uploads/${req.files.aboutImage[0].filename}`;
+        home.about.image = await uploadToCloudinary(req.files.aboutImage[0].buffer, "EmployeeDashboard/Home/About");
       }
 
       // Update services
@@ -225,11 +203,11 @@ router.put(
         home.portfolio = typeof portfolio === 'string' ? JSON.parse(portfolio) : portfolio;
       }
       if (req.files?.portfolioImages) {
-        req.files.portfolioImages.forEach((file, index) => {
-          if (home.portfolio[index]) {
-            home.portfolio[index].image = `/uploads/${file.filename}`;
+        for (let i = 0; i < req.files.portfolioImages.length; i++) {
+          if (home.portfolio[i]) {
+            home.portfolio[i].image = await uploadToCloudinary(req.files.portfolioImages[i].buffer, "EmployeeDashboard/Home/Portfolio");
           }
-        });
+        }
       }
 
       // Update contact CTA section
@@ -239,7 +217,6 @@ router.put(
       home.contactCTA.buttonLink = contactButtonLink || home.contactCTA.buttonLink;
 
       home.updatedAt = Date.now();
-
       await home.save();
       res.status(200).json({ message: 'Home Page content updated successfully!', home });
     } catch (err) {
@@ -258,18 +235,7 @@ router.delete('/delete-home/:id', authenticate, async (req, res) => {
     if (!home) {
       return res.status(404).json({ error: 'Home Page content not found.' });
     }
-    // Delete hero background image if exists
-    if (home.hero.backgroundImage) {
-      const heroPath = path.join(__dirname, '..', home.hero.backgroundImage);
-      fs.unlink(heroPath, err => { if (err) console.error('Failed to delete hero background:', err); });
-    }
-    // Delete about image if exists
-    if (home.about.image) {
-      const aboutPath = path.join(__dirname, '..', home.about.image);
-      fs.unlink(aboutPath, err => { if (err) console.error('Failed to delete about image:', err); });
-    }
-    // Additional cleanup for portfolio images can be added similarly
-
+    // Optionally, if you wish to remove Cloudinary assets, use Cloudinary's destroy API.
     await home.deleteOne();
     res.status(200).json({ message: 'Home Page content deleted successfully!' });
   } catch (err) {

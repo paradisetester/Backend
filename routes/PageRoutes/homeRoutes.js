@@ -54,12 +54,12 @@ router.post(
     try {
       // Upload hero background image to Cloudinary (e.g., "EmployeeDashboard/Home/Hero")
       const heroBackground = req.files?.heroBackground
-        ? await uploadToCloudinary(req.files.heroBackground[0].buffer, "EmployeeDashboard/Home/Hero")
+        ? await uploadToCloudinary(req.files.heroBackground[0].buffer, "Employee Dashboard/Home/Hero")
         : null;
       
       // Upload about section image to Cloudinary (e.g., "EmployeeDashboard/Home/About")
       const aboutImage = req.files?.aboutImage
-        ? await uploadToCloudinary(req.files.aboutImage[0].buffer, "EmployeeDashboard/Home/About")
+        ? await uploadToCloudinary(req.files.aboutImage[0].buffer, "Employee Dashboard/Home/About")
         : null;
       
       // Process portfolio images and parse portfolio data
@@ -67,7 +67,7 @@ router.post(
       if (req.files?.portfolioImages) {
         for (let i = 0; i < req.files.portfolioImages.length; i++) {
           if (parsedPortfolio[i]) {
-            parsedPortfolio[i].image = await uploadToCloudinary(req.files.portfolioImages[i].buffer, "EmployeeDashboard/Home/Portfolio");
+            parsedPortfolio[i].image = await uploadToCloudinary(req.files.portfolioImages[i].buffer, "Employee Dashboard/Home/Portfolio");
           }
         }
       }
@@ -182,7 +182,7 @@ router.put(
       home.hero.buttonText = heroButtonText || home.hero.buttonText;
       home.hero.buttonLink = heroButtonLink || home.hero.buttonLink;
       if (req.files?.heroBackground) {
-        home.hero.backgroundImage = await uploadToCloudinary(req.files.heroBackground[0].buffer, "EmployeeDashboard/Home/Hero");
+        home.hero.backgroundImage = await uploadToCloudinary(req.files.heroBackground[0].buffer, "Employee Dashboard/Home/Hero");
       }
 
       // Update about section
@@ -190,7 +190,7 @@ router.put(
       home.about.description = aboutDescription || home.about.description;
       home.about.readMoreLink = aboutReadMoreLink || home.about.readMoreLink;
       if (req.files?.aboutImage) {
-        home.about.image = await uploadToCloudinary(req.files.aboutImage[0].buffer, "EmployeeDashboard/Home/About");
+        home.about.image = await uploadToCloudinary(req.files.aboutImage[0].buffer, "Employee Dashboard/Home/About");
       }
 
       // Update services
@@ -205,7 +205,7 @@ router.put(
       if (req.files?.portfolioImages) {
         for (let i = 0; i < req.files.portfolioImages.length; i++) {
           if (home.portfolio[i]) {
-            home.portfolio[i].image = await uploadToCloudinary(req.files.portfolioImages[i].buffer, "EmployeeDashboard/Home/Portfolio");
+            home.portfolio[i].image = await uploadToCloudinary(req.files.portfolioImages[i].buffer, "Employee Dashboard/Home/Portfolio");
           }
         }
       }

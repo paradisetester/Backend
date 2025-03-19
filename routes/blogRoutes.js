@@ -1,31 +1,24 @@
 const express = require('express');
-const multer = require('multer'); // File upload middleware
+const multer = require('multer'); // Middleware for file uploads
 const path = require('path');
-const fs = require('fs');
 const Blog = require('../models/Blog');
 const authenticate = require('../middleware/authenticate');
+const cloudinary = require('cloudinary').v2; // Cloudinary SDK
+require('dotenv').config(); // Load environment variables
 
 const router = express.Router();
 
-/* ------------------------------------------
- ✅ Multer Configuration for File Uploads
------------------------------------------- */
-const storage = multer.diskStorage({
-	destination: (req, file, cb) => {
-		const uploadPath = path.join(__dirname, '../uploads');
-		if (!fs.existsSync(uploadPath)) {
-			fs.mkdirSync(uploadPath, { recursive: true });
-		}
-		cb(null, uploadPath);
-	},
-	filename: (req, file, cb) => {
-		cb(null, `${Date.now()}-${file.originalname}`);
-	},
-});
+// Configure Cloudinary using the CLOUDINARY_URL from your .env file
+cloudinary.config(process.env.CLOUDINARY_URL);
 
+/* ------------------------------------------------------------------
+ ✅ Multer Configuration using Memory Storage (for Cloudinary Upload)
+------------------------------------------------------------------ */
+const storage = multer.memoryStorage();
 const upload = multer({
 	storage,
 	fileFilter: (req, file, cb) => {
+		// Allow only images (jpeg, jpg, png, gif)
 		const allowedTypes = /jpeg|jpg|png|gif/;
 		const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
 		const mimetype = allowedTypes.test(file.mimetype);
@@ -38,9 +31,26 @@ const upload = multer({
 	}
 });
 
-/* ------------------------------------------
- ✅ Route: Add a New Blog
------------------------------------------- */
+/* ------------------------------------------------------------------
+ ✅ Helper Function: Upload File Buffer to Cloudinary
+     - Uploads the image to the "Employee Dashboard" folder.
+------------------------------------------------------------------ */
+const uploadToCloudinary = (fileBuffer) => {
+	return new Promise((resolve, reject) => {
+		const stream = cloudinary.uploader.upload_stream(
+			{ folder: "Employee Dashboard" },
+			(error, result) => {
+				if (error) return reject(error);
+				resolve(result);
+			}
+		);
+		stream.end(fileBuffer);
+	});
+};
+
+/* ------------------------------------------------------------------
+ ✅ Route: Add a New Blog (with Cloudinary Image Upload)
+------------------------------------------------------------------ */
 router.post('/add-blog', authenticate, upload.single('featuredImage'), async (req, res) => {
 	const { title, content, limit } = req.body;
 
@@ -49,8 +59,13 @@ router.post('/add-blog', authenticate, upload.single('featuredImage'), async (re
 	}
 
 	try {
-		// Save relative file path
-		const featuredImage = req.file ? `/uploads/${req.file.filename}` : null;
+		// If a file is uploaded, send its buffer to Cloudinary
+		let featuredImage = null;
+		if (req.file) {
+			const result = await uploadToCloudinary(req.file.buffer);
+			featuredImage = result.secure_url;
+			// Optionally, store result.public_id if you plan to manage the image (e.g., delete or update) later.
+		}
 
 		const newBlog = new Blog({
 			title,
@@ -69,18 +84,17 @@ router.post('/add-blog', authenticate, upload.single('featuredImage'), async (re
 	}
 });
 
-
-/* ------------------------------------------
+/* ------------------------------------------------------------------
  ✅ Route: Fetch All Blogs (with Pagination & Sorting)
------------------------------------------- */
+------------------------------------------------------------------ */
 router.get('/get-blogs', async (req, res) => {
 	const { page = 1, limit = 10, sortBy = 'uploadedOn' } = req.query;
 
 	try {
 		const blogs = await Blog.find()
 			.populate('uploadedBy', 'name position')
-			.sort({ [sortBy]: -1 }) // Default: descending order
-			.skip((page - 1) * limit) // Pagination logic
+			.sort({ [sortBy]: -1 })
+			.skip((page - 1) * limit)
 			.limit(Number(limit));
 
 		const totalBlogs = await Blog.countDocuments();
@@ -97,13 +111,12 @@ router.get('/get-blogs', async (req, res) => {
 	}
 });
 
-/* ------------------------------------------
+/* ------------------------------------------------------------------
  ✅ Route: Get Single Blog by ID
------------------------------------------- */
+------------------------------------------------------------------ */
 router.get('/get-blog/:id', async (req, res) => {
 	const { id } = req.params;
 
-	// Validate ID format
 	if (!id.match(/^[0-9a-fA-F]{24}$/)) {
 		return res.status(400).json({ error: 'Invalid blog ID format.' });
 	}
@@ -122,9 +135,9 @@ router.get('/get-blog/:id', async (req, res) => {
 	}
 });
 
-/* ------------------------------------------
- ✅ Route: Update Blog
------------------------------------------- */
+/* ------------------------------------------------------------------
+ ✅ Route: Update Blog (with Cloudinary Image Upload)
+------------------------------------------------------------------ */
 router.put('/update-blog/:id', authenticate, upload.single('featuredImage'), async (req, res) => {
 	const { title, content, limit } = req.body;
 
@@ -135,24 +148,26 @@ router.put('/update-blog/:id', authenticate, upload.single('featuredImage'), asy
 			return res.status(404).json({ error: 'Blog not found.' });
 		}
 
-		// Authorization check (allow only the author or admin)
+		// Authorization check: allow only the author or admin
 		if (blog.uploadedBy.toString() !== req.employeeId && req.role !== 'admin') {
 			return res.status(403).json({ error: 'Not authorized to update this blog.' });
 		}
 
-		// Update fields
+		// Update text fields
 		blog.title = title || blog.title;
 		blog.content = content || blog.content;
 		blog.limit = limit ? new Date(limit) : blog.limit;
 
+		// If a new image is uploaded, upload to Cloudinary
 		if (req.file) {
-			// Remove old image if a new one is uploaded
-			if (blog.featuredImage) {
-				fs.unlink(blog.featuredImage, (err) => {
-					if (err) console.error('Failed to delete old image:', err);
-				});
-			}
-			blog.featuredImage = req.file.path;
+			// Optionally: If you stored the previous image's public_id, you can delete it:
+			// if (blog.cloudinaryPublicId) {
+			//    await cloudinary.uploader.destroy(blog.cloudinaryPublicId);
+			// }
+
+			const result = await uploadToCloudinary(req.file.buffer);
+			blog.featuredImage = result.secure_url;
+			// Optionally, store result.public_id for future management.
 		}
 
 		await blog.save();
@@ -163,9 +178,9 @@ router.put('/update-blog/:id', authenticate, upload.single('featuredImage'), asy
 	}
 });
 
-/* ------------------------------------------
- ✅ Route: Delete Blog
------------------------------------------- */
+/* ------------------------------------------------------------------
+ ✅ Route: Delete Blog (Optionally, Delete Image from Cloudinary)
+------------------------------------------------------------------ */
 router.delete('/delete-blog/:id', authenticate, async (req, res) => {
 	try {
 		const blog = await Blog.findById(req.params.id);
@@ -179,12 +194,10 @@ router.delete('/delete-blog/:id', authenticate, async (req, res) => {
 			return res.status(403).json({ error: 'Not authorized to delete this blog.' });
 		}
 
-		// Remove image if exists
-		if (blog.featuredImage) {
-			fs.unlink(blog.featuredImage, (err) => {
-				if (err) console.error('Failed to delete image:', err);
-			});
-		}
+		// Optionally: Delete image from Cloudinary if you stored the public_id
+		// if (blog.cloudinaryPublicId) {
+		//    await cloudinary.uploader.destroy(blog.cloudinaryPublicId);
+		// }
 
 		await blog.deleteOne();
 		res.status(200).json({ message: 'Blog deleted successfully!' });
@@ -194,7 +207,7 @@ router.delete('/delete-blog/:id', authenticate, async (req, res) => {
 	}
 });
 
-/* ------------------------------------------
+/* ------------------------------------------------------------------
  ✅ Export Router
------------------------------------------- */
+------------------------------------------------------------------ */
 module.exports = router;

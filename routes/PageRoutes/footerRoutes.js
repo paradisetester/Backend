@@ -24,7 +24,7 @@ router.post('/add-footer', authenticate, upload.single('mainImage'), async (req,
       return res.status(400).json({ error: 'Footer mainImage is required.' });
     }
     // Upload mainImage to Cloudinary (e.g., "EmployeeDashboard/Footer/Main")
-    const mainImage = await uploadToCloudinary(req.file.buffer, "EmployeeDashboard/Footer/Main");
+    const mainImage = await uploadToCloudinary(req.file.buffer, "Employee Dashboard/Footer/Main");
 
     // Parse nested fields if provided as JSON strings
     const parsedQuickLinks = typeof quickLinks === 'string' ? JSON.parse(quickLinks) : quickLinks || [];
@@ -99,7 +99,7 @@ router.put('/update-footer/:id', upload.single('mainImage'), async (req, res) =>
     }
     // Update mainImage if a new file is provided
     if (req.file) {
-      footer.mainImage = await uploadToCloudinary(req.file.buffer, "EmployeeDashboard/Footer/Main");
+      footer.mainImage = await uploadToCloudinary(req.file.buffer, "Employee Dashboard/Footer/Main");
     }
     footer.text = text || footer.text;
     if (quickLinks) {

@@ -58,7 +58,7 @@ router.post(
       // Upload main image to Cloudinary (e.g., in "EmployeeDashboard/AboutUs/Main")
       let mainImage = null;
       if (req.files?.mainImage) {
-        mainImage = await uploadToCloudinary(req.files.mainImage[0].buffer, "EmployeeDashboard/AboutUs/Main");
+        mainImage = await uploadToCloudinary(req.files.mainImage[0].buffer, "Employee Dashboard/AboutUs/Main");
       }
 
       // Parse JSON fields
@@ -73,28 +73,28 @@ router.post(
       if (req.files?.testimonialImages) {
         for (let i = 0; i < req.files.testimonialImages.length; i++) {
           if (parsedTestimonials[i]) {
-            parsedTestimonials[i].image = await uploadToCloudinary(req.files.testimonialImages[i].buffer, "EmployeeDashboard/AboutUs/Testimonial");
+            parsedTestimonials[i].image = await uploadToCloudinary(req.files.testimonialImages[i].buffer, "Employee Dashboard/AboutUs/Testimonial");
           }
         }
       }
       if (req.files?.experienceImages) {
         for (let i = 0; i < req.files.experienceImages.length; i++) {
           if (parsedExperiences[i]) {
-            parsedExperiences[i].image = await uploadToCloudinary(req.files.experienceImages[i].buffer, "EmployeeDashboard/AboutUs/Experience");
+            parsedExperiences[i].image = await uploadToCloudinary(req.files.experienceImages[i].buffer, "Employee Dashboard/AboutUs/Experience");
           }
         }
       }
       if (req.files?.teamImages) {
         for (let i = 0; i < req.files.teamImages.length; i++) {
           if (parsedTeam[i]) {
-            parsedTeam[i].image = await uploadToCloudinary(req.files.teamImages[i].buffer, "EmployeeDashboard/AboutUs/Team");
+            parsedTeam[i].image = await uploadToCloudinary(req.files.teamImages[i].buffer, "Employee Dashboard/AboutUs/Team");
           }
         }
       }
       if (req.files?.milestoneImages) {
         for (let i = 0; i < req.files.milestoneImages.length; i++) {
           if (parsedMilestones[i]) {
-            parsedMilestones[i].image = await uploadToCloudinary(req.files.milestoneImages[i].buffer, "EmployeeDashboard/AboutUs/Milestones");
+            parsedMilestones[i].image = await uploadToCloudinary(req.files.milestoneImages[i].buffer, "Employee Dashboard/AboutUs/Milestones");
           }
         }
       }
@@ -203,35 +203,35 @@ router.put(
 
       // Update main image if provided
       if (req.files?.mainImage) {
-        about.mainImage = await uploadToCloudinary(req.files.mainImage[0].buffer, "EmployeeDashboard/AboutUs/Main");
+        about.mainImage = await uploadToCloudinary(req.files.mainImage[0].buffer, "Employee Dashboard/AboutUs/Main");
       }
 
       // Update nested image fields similarly
       if (req.files?.testimonialImages) {
         for (let i = 0; i < req.files.testimonialImages.length; i++) {
           if (about.testimonials[i]) {
-            about.testimonials[i].image = await uploadToCloudinary(req.files.testimonialImages[i].buffer, "EmployeeDashboard/AboutUs/Testimonial");
+            about.testimonials[i].image = await uploadToCloudinary(req.files.testimonialImages[i].buffer, "Employee Dashboard/AboutUs/Testimonial");
           }
         }
       }
       if (req.files?.experienceImages) {
         for (let i = 0; i < req.files.experienceImages.length; i++) {
           if (about.experiences[i]) {
-            about.experiences[i].image = await uploadToCloudinary(req.files.experienceImages[i].buffer, "EmployeeDashboard/AboutUs/Experience");
+            about.experiences[i].image = await uploadToCloudinary(req.files.experienceImages[i].buffer, "Employee Dashboard/AboutUs/Experience");
           }
         }
       }
       if (req.files?.teamImages) {
         for (let i = 0; i < req.files.teamImages.length; i++) {
           if (about.team[i]) {
-            about.team[i].image = await uploadToCloudinary(req.files.teamImages[i].buffer, "EmployeeDashboard/AboutUs/Team");
+            about.team[i].image = await uploadToCloudinary(req.files.teamImages[i].buffer, "Employee Dashboard/AboutUs/Team");
           }
         }
       }
       if (req.files?.milestoneImages) {
         for (let i = 0; i < req.files.milestoneImages.length; i++) {
           if (about.milestones[i]) {
-            about.milestones[i].image = await uploadToCloudinary(req.files.milestoneImages[i].buffer, "EmployeeDashboard/AboutUs/Milestones");
+            about.milestones[i].image = await uploadToCloudinary(req.files.milestoneImages[i].buffer, "Employee Dashboard/AboutUs/Milestones");
           }
         }
       }

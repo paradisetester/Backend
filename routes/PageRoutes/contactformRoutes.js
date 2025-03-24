@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const ContactFormEntries = require('../../models/Pages/ContactForm');
-const authenticate = require('../middleware/authenticate');
+const authenticate = require('../../middleware/authenticate');
 
 const router = express.Router();
 

@@ -240,10 +240,12 @@ router.put('/update-profile/:employeeId', upload.single('profilepicture'), [
 
   const { employeeId } = req.params;
   try {
+    let profilepicture=null;
     // Upload a new profile picture if provided.
     if (req.file) {
-      const profilepictureUrl = await uploadToCloudinary(req.file.buffer, "Employee Dashboard/Employee Profile Picutres");
-      req.body.profilepicture = profilepictureUrl;
+
+      profilepicture = await uploadToCloudinary(req.file.buffer, "Employee Dashboard/Employee Profile Picutres");
+      // req.body.profilepicture = profilepictureUrl;
     }
 
     // Parse nested fields if provided as JSON strings.

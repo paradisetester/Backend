@@ -3,13 +3,13 @@ const bcrypt = require('bcryptjs');
 
 // Employee schema
 const employeeSchema = new mongoose.Schema({
-  personaldetails: [{
+  personaldetails: {
     location: { type: String, required: true },
     dob: { type: Date, required: true },
     gender: { type: String, enum: ['male', 'female', 'other'] },
     maritalStatus: { type: String, enum: ['single', 'married', 'divorced', 'widowed'] },
     nationality: { type: String }
-  }],
+  },
   address: {
     street: { type: String, required: true },
     city: { type: String, required: true },

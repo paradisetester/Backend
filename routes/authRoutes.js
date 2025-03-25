@@ -41,9 +41,10 @@ router.post('/register', upload.single('profilepicture'), [
   body('salary').isFloat({ min: 0 }).withMessage('Salary must be a positive number'),
   body('position').notEmpty().withMessage('Position is required'),
   body('department').notEmpty().withMessage('Department is required'),
-  body('personaldetails').isArray().withMessage('Personal details must be an array'),
-  body('personaldetails.*.location').notEmpty().withMessage('Location is required in personal details'),
-  body('personaldetails.*.dob').notEmpty().withMessage('DOB is required in personal details'),
+  // For personaldetails as an object (not an array)
+  body('personaldetails').notEmpty().withMessage('Personal details are required'),
+  body('personaldetails.location').notEmpty().withMessage('Location is required in personal details'),
+  body('personaldetails.dob').notEmpty().withMessage('DOB is required in personal details'),
   body('address.street').notEmpty().withMessage('Street is required'),
   body('address.city').notEmpty().withMessage('City is required'),
   body('address.state').notEmpty().withMessage('State is required'),
@@ -76,7 +77,14 @@ router.post('/register', upload.single('profilepicture'), [
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create and save the new employee. Nested fields are parsed from JSON strings if necessary.
+    // Parse nested fields if provided as JSON strings
+    const pd = typeof personaldetails === 'string' ? JSON.parse(personaldetails) : personaldetails;
+    const addrObj = typeof address === 'string' ? JSON.parse(address) : address;
+    const contactObj = typeof contact === 'string' ? JSON.parse(contact) : contact;
+    const emergencyContactObj = typeof emergencyContact === 'string' ? JSON.parse(emergencyContact) : emergencyContact;
+    const identificationObj = identification ? (typeof identification === 'string' ? JSON.parse(identification) : identification) : {};
+    const socialProfilesObj = socialProfiles ? (typeof socialProfiles === 'string' ? JSON.parse(socialProfiles) : socialProfiles) : {};
+
     const employee = new Employee({
       name,
       email,
@@ -86,13 +94,12 @@ router.post('/register', upload.single('profilepicture'), [
       salary,
       position,
       department,
-      // Expecting personaldetails as a JSON string if coming from a form-data submission.
-      personaldetails: typeof personaldetails === 'string' ? JSON.parse(personaldetails) : personaldetails,
-      address: typeof address === 'string' ? JSON.parse(address) : address,
-      contact: typeof contact === 'string' ? JSON.parse(contact) : contact,
-      emergencyContact: typeof emergencyContact === 'string' ? JSON.parse(emergencyContact) : emergencyContact,
-      identification: identification ? (typeof identification === 'string' ? JSON.parse(identification) : identification) : {},
-      socialProfiles: socialProfiles ? (typeof socialProfiles === 'string' ? JSON.parse(socialProfiles) : socialProfiles) : {},
+      personaldetails: pd, // now a plain object
+      address: addrObj,
+      contact: contactObj,
+      emergencyContact: emergencyContactObj,
+      identification: identificationObj,
+      socialProfiles: socialProfilesObj,
       profilepicture: profilepictureUrl
     });
     await employee.save();
@@ -207,9 +214,10 @@ router.put('/update-profile/:employeeId', upload.single('profilepicture'), [
   body('salary').optional().isFloat({ min: 0 }).withMessage('Salary must be a positive number'),
   body('position').optional().notEmpty().withMessage('Position is required'),
   body('department').optional().notEmpty().withMessage('Department is required'),
-  body('personaldetails').optional().isArray().withMessage('Personal details must be an array'),
-  body('personaldetails.*.location').optional().notEmpty().withMessage('Location is required in personal details'),
-  body('personaldetails.*.dob').optional().notEmpty().withMessage('DOB is required in personal details'),
+  // For personaldetails as an object
+  body('personaldetails').optional().notEmpty().withMessage('Personal details cannot be empty'),
+  body('personaldetails.location').optional().notEmpty().withMessage('Location is required in personal details'),
+  body('personaldetails.dob').optional().notEmpty().withMessage('DOB is required in personal details'),
   body('address.street').optional().notEmpty().withMessage('Street is required'),
   body('address.city').optional().notEmpty().withMessage('City is required'),
   body('address.state').optional().notEmpty().withMessage('State is required'),
@@ -233,8 +241,12 @@ router.put('/update-profile/:employeeId', upload.single('profilepicture'), [
       req.body.profilepicture = profilepictureUrl;
     }
 
-    // Parse nested fields if they are provided as JSON strings.
-    if (req.body.personaldetails) req.body.personaldetails = typeof req.body.personaldetails === 'string' ? JSON.parse(req.body.personaldetails) : req.body.personaldetails;
+    // Parse nested fields if provided as JSON strings.
+    if (req.body.personaldetails) {
+      req.body.personaldetails = typeof req.body.personaldetails === 'string'
+        ? JSON.parse(req.body.personaldetails)
+        : req.body.personaldetails;
+    }
     if (req.body.address) req.body.address = typeof req.body.address === 'string' ? JSON.parse(req.body.address) : req.body.address;
     if (req.body.contact) req.body.contact = typeof req.body.contact === 'string' ? JSON.parse(req.body.contact) : req.body.contact;
     if (req.body.emergencyContact) req.body.emergencyContact = typeof req.body.emergencyContact === 'string' ? JSON.parse(req.body.emergencyContact) : req.body.emergencyContact;

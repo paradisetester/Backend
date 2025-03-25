@@ -94,7 +94,7 @@ router.post('/register', upload.single('profilepicture'), [
       salary,
       position,
       department,
-      personaldetails: pd, // now a plain object
+      personaldetails: pd, // personaldetails is now a plain object
       address: addrObj,
       contact: contactObj,
       emergencyContact: emergencyContactObj,
@@ -133,11 +133,9 @@ router.post('/login', async (req, res) => {
     const token = generateToken(employee);
     res.json({
       token,
-      // Include _id at the top level along with other fields:
       id: employee._id,
       name: employee.name,
       role: employee.role,
-      // Also include the full employee object if needed:
       employee: {
         name: employee.name,
         email: employee.email,
@@ -211,6 +209,7 @@ router.delete('/delete-employee/:id', authenticate, async (req, res) => {
  * 📝 Update employee profile (Admin or User)
  * - Supports updating both simple and nested fields.
  * - Optionally updates the profile picture if a new file is provided.
+ * - If no new file is provided, the profile picture field is not updated.
  */
 router.put('/update-profile/:employeeId', upload.single('profilepicture'), [
   body('name').optional().notEmpty().withMessage('Name cannot be empty'),
@@ -244,10 +243,8 @@ router.put('/update-profile/:employeeId', upload.single('profilepicture'), [
       const profilepictureUrl = await uploadToCloudinary(req.file.buffer, "Employee Dashboard/Employee Profile Picutres");
       req.body.profilepicture = profilepictureUrl;
     } else {
-      // Optionally remove the profilepicture field if it exists as an empty object
-      if (req.body.profilepicture && typeof req.body.profilepicture === 'object' && Object.keys(req.body.profilepicture).length === 0) {
-        delete req.body.profilepicture;
-      }
+      // If no new file is provided, remove the profilepicture field from req.body
+      delete req.body.profilepicture;
     }
 
     // Parse nested fields if provided as JSON strings.
@@ -282,7 +279,6 @@ router.put('/update-profile/:employeeId', upload.single('profilepicture'), [
         : req.body.socialProfiles;
     }
     
-    // Update the employee document.
     const updatedEmployee = await Employee.findByIdAndUpdate(employeeId, req.body, { new: true });
     if (!updatedEmployee) {
       return res.status(404).json({ error: 'Employee not found' });
@@ -296,6 +292,5 @@ router.put('/update-profile/:employeeId', upload.single('profilepicture'), [
     res.status(500).json({ error: 'Failed to update profile' });
   }
 });
-
 
 module.exports = router;

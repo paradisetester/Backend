@@ -133,6 +133,11 @@ router.post('/login', async (req, res) => {
     const token = generateToken(employee);
     res.json({
       token,
+      // Include _id at the top level along with other fields:
+      id: employee._id,
+      name: employee.name,
+      role: employee.role,
+      // Also include the full employee object if needed:
       employee: {
         name: employee.name,
         email: employee.email,

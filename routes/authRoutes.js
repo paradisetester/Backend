@@ -219,7 +219,6 @@ router.put('/update-profile/:employeeId', upload.single('profilepicture'), [
   body('salary').optional().isFloat({ min: 0 }).withMessage('Salary must be a positive number'),
   body('position').optional().notEmpty().withMessage('Position is required'),
   body('department').optional().notEmpty().withMessage('Department is required'),
-  // For personaldetails as an object
   body('personaldetails').optional().notEmpty().withMessage('Personal details cannot be empty'),
   body('personaldetails.location').optional().notEmpty().withMessage('Location is required in personal details'),
   body('personaldetails.dob').optional().notEmpty().withMessage('DOB is required in personal details'),
@@ -240,12 +239,15 @@ router.put('/update-profile/:employeeId', upload.single('profilepicture'), [
 
   const { employeeId } = req.params;
   try {
-    let profilepicture=null;
-    // Upload a new profile picture if provided.
+    // If a new profile picture file is provided, upload it and update the field.
     if (req.file) {
-
-      profilepicture = await uploadToCloudinary(req.file.buffer, "Employee Dashboard/Employee Profile Picutres");
-      // req.body.profilepicture = profilepictureUrl;
+      const profilepictureUrl = await uploadToCloudinary(req.file.buffer, "Employee Dashboard/Employee Profile Picutres");
+      req.body.profilepicture = profilepictureUrl;
+    } else {
+      // Optionally remove the profilepicture field if it exists as an empty object
+      if (req.body.profilepicture && typeof req.body.profilepicture === 'object' && Object.keys(req.body.profilepicture).length === 0) {
+        delete req.body.profilepicture;
+      }
     }
 
     // Parse nested fields if provided as JSON strings.
@@ -254,12 +256,33 @@ router.put('/update-profile/:employeeId', upload.single('profilepicture'), [
         ? JSON.parse(req.body.personaldetails)
         : req.body.personaldetails;
     }
-    if (req.body.address) req.body.address = typeof req.body.address === 'string' ? JSON.parse(req.body.address) : req.body.address;
-    if (req.body.contact) req.body.contact = typeof req.body.contact === 'string' ? JSON.parse(req.body.contact) : req.body.contact;
-    if (req.body.emergencyContact) req.body.emergencyContact = typeof req.body.emergencyContact === 'string' ? JSON.parse(req.body.emergencyContact) : req.body.emergencyContact;
-    if (req.body.identification) req.body.identification = typeof req.body.identification === 'string' ? JSON.parse(req.body.identification) : req.body.identification;
-    if (req.body.socialProfiles) req.body.socialProfiles = typeof req.body.socialProfiles === 'string' ? JSON.parse(req.body.socialProfiles) : req.body.socialProfiles;
+    if (req.body.address) {
+      req.body.address = typeof req.body.address === 'string'
+        ? JSON.parse(req.body.address)
+        : req.body.address;
+    }
+    if (req.body.contact) {
+      req.body.contact = typeof req.body.contact === 'string'
+        ? JSON.parse(req.body.contact)
+        : req.body.contact;
+    }
+    if (req.body.emergencyContact) {
+      req.body.emergencyContact = typeof req.body.emergencyContact === 'string'
+        ? JSON.parse(req.body.emergencyContact)
+        : req.body.emergencyContact;
+    }
+    if (req.body.identification) {
+      req.body.identification = typeof req.body.identification === 'string'
+        ? JSON.parse(req.body.identification)
+        : req.body.identification;
+    }
+    if (req.body.socialProfiles) {
+      req.body.socialProfiles = typeof req.body.socialProfiles === 'string'
+        ? JSON.parse(req.body.socialProfiles)
+        : req.body.socialProfiles;
+    }
     
+    // Update the employee document.
     const updatedEmployee = await Employee.findByIdAndUpdate(employeeId, req.body, { new: true });
     if (!updatedEmployee) {
       return res.status(404).json({ error: 'Employee not found' });
@@ -273,5 +296,6 @@ router.put('/update-profile/:employeeId', upload.single('profilepicture'), [
     res.status(500).json({ error: 'Failed to update profile' });
   }
 });
+
 
 module.exports = router;

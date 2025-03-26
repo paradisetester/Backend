@@ -31,7 +31,7 @@ router.post('/add-entry', async (req, res) => {
 
   try {
     // Create a new contact form entry
-    const newEntry = new ContactFormEntries({ name, email, message });
+    const newEntry= new ContactFormEntries({ name, email, message });
     await newEntry.save();
 
     // Create a Nodemailer transporter

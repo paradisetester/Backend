@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const ContactFormEntries = require('../../models/Pages/ContactForm');
 const authenticate = require('../../middleware/authenticate');
+const nodemailer = require('nodemailer');
 
 const router = express.Router();
 
@@ -30,16 +31,37 @@ router.post('/add-entry', async (req, res) => {
 
   try {
     // Create a new contact form entry
-    const newEntry = new ContactFormEntries({
-      name,
-      email,
-      message,
+    const newEntry = new ContactFormEntries({ name, email, message });
+    await newEntry.save();
+
+    // Create a Nodemailer transporter
+    const transporter = nodemailer.createTransport({
+      service: 'gmail', // or another email service
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
     });
 
-    await newEntry.save();
-    res.status(201).json({ 
-      message: 'Contact form submitted successfully!', 
-      contactFormData: newEntry 
+    // Email to admin notifying of a new submission
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: process.env.ADMIN_EMAIL,
+      subject: 'New Contact Form Submission',
+      text: `A new form submission was received from ${name} (${email}):\n\n${message}`,
+    });
+
+    // Confirmation email to the user
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Thanks for contacting us',
+      text: 'Thank you for contacting us. We will get back to you shortly.',
+    });
+
+    res.status(201).json({
+      message: 'Contact form submitted successfully!',
+      contactFormData: newEntry,
     });
   } catch (err) {
     console.error(err);

@@ -42,7 +42,10 @@ router.post('/add-entry', async (req, res) => {
         pass: process.env.EMAIL_PASS,
       },
     });
-
+    console.log(process.env.EMAIL_USER);
+    console.log(process.env.EMAIL_PASS);
+    console.log(process.env.ADMIN_EMAIL);
+    
     // Email to admin notifying of a new submission
     await transporter.sendMail({
       from: process.env.EMAIL_USER,

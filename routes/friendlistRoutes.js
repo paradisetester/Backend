@@ -64,7 +64,7 @@ router.get('/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         const friendList = await FriendList.findOne({ user: userId })
-            .populate('friends', 'name email'); // Populate friend details (adjust fields as needed)
+            .populate('friends', 'name email profilepicture position socialProfiles'); // Populate friend details (adjust fields as needed)
 
         if (!friendList) {
             return res.status(404).json({ message: 'Friend list not found for user' });

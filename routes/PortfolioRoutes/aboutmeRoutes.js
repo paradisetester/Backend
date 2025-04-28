@@ -1,8 +1,7 @@
-// routes/Pages/aboutMe.js
 const express  = require('express');
 const multer   = require('multer');
 const path     = require('path');
-const AboutMe  = require('../../models/Pages/AboutMe');
+const AboutMe  = require('../../models/Portfolio/AboutMe');
 const authenticate = require('../../middleware/authenticate');
 const { uploadToCloudinary } = require('../../utils/cloudinaryUpload');
 

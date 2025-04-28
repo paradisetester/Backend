@@ -1,6 +1,6 @@
 const express = require('express');
 const Skill   = require('../../models/Portfolio/Skills');
-const authenticate = require('../middleware/authenticate'); // if you have auth
+const authenticate = require('../../middleware/authenticate'); // if you have auth
 
 const router = express.Router();
 

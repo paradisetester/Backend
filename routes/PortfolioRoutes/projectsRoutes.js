@@ -1,5 +1,5 @@
 const express = require('express');
-const Project = require('../models/Porfolio/Projects');
+const Project = require('../models/Portfolio/Projects');
 // const authenticate = require('../middleware/authenticate'); // uncomment if you have auth
 
 const router = express.Router();

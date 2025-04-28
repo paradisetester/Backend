@@ -25,6 +25,9 @@ const homeRoutes = require('./routes/PageRoutes/homeRoutes');
 const footerRoutes = require('./routes/PageRoutes/footerRoutes');
 const frientlistRoutes = require('./routes/friendlistRoutes');
 const contactformRoutes = require('./routes/PageRoutes/contactformRoutes');
+const aboutmeRoutes = require('./routes/PortfolioRoutes/aboutMeRoutes');
+const projectsRoutes = require('./routes/PortfolioRoutes/projectsRoutes');
+const skillsRoutes = require('./routes/PortfolioRoutes/skillsRoutes');
 const app = express();
 const server = http.createServer(app);
 
@@ -70,6 +73,9 @@ app.use('/api/aboutus', aboutuseRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/footer', footerRoutes);
 app.use('/api/contactform', contactformRoutes);
+app.use('/api/portfolio/aboutme', aboutmeRoutes);
+app.use('/api/portfolio/projects', projectsRoutes);
+app.use('/api/portfolio/skills', skillsRoutes);
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/employee_dashboard')
